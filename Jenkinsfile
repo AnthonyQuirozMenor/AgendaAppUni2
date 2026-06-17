@@ -29,9 +29,9 @@ pipeline {
             steps {
                 // Performs SonarQube static code analysis for Dart and reports unit test coverage
                 echo 'Running SonarQube static analysis...'
-                // withSonarQubeEnv('SonarQube-Server') {
-                //     sh 'sonar-scanner -Dsonar.projectKey=agenda-app -Dsonar.sources=lib -Dsonar.tests=test -Dsonar.dart.lcov.reportPath=coverage/lcov.info'
-                // }
+                withSonarQubeEnv('SonarQube-Server') {
+                    sh 'sonar-scanner -Dsonar.projectKey=agenda-app -Dsonar.sources=lib -Dsonar.tests=test -Dsonar.dart.lcov.reportPath=coverage/lcov.info'
+                }
             }
         }
 

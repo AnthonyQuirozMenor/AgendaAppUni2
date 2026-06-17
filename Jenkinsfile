@@ -42,15 +42,15 @@ pipeline {
                 // Stops and deletes any existing container of the app to avoid port conflicts
                 sh "docker stop ${CONTAINER_NAME} || true"
                 sh "docker rm ${CONTAINER_NAME} || true"
-                // Run the new container, exposing the web app on port 8080
-                sh "docker run -d -p 8080:80 --name ${CONTAINER_NAME} ${DOCKER_IMAGE}"
+                // Run the new container, exposing the web app on port 8082
+                sh "docker run -d -p 8082:80 --name ${CONTAINER_NAME} ${DOCKER_IMAGE}"
             }
         }
     }
 
     post {
         success {
-            echo 'Pipeline executed successfully! App is deployed and running on http://localhost:8080'
+            echo 'Pipeline executed successfully! App is deployed and running on http://localhost:8082'
         }
         failure {
             echo 'Pipeline failed. Please check the logs.'

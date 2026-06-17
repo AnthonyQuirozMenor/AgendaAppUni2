@@ -19,6 +19,8 @@ pipeline {
                 echo 'Running flutter pub get, tests with coverage, and building web release...'
                 sh 'flutter pub get'
                 sh 'flutter test --coverage'
+                sh 'dart pub global activate flutter_coverage_report'
+                sh 'dart pub global run flutter_coverage_report:fcr coverage/lcov.info'
                 sh 'flutter build web --release'
             }
         }

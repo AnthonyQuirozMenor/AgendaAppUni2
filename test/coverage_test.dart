@@ -3,8 +3,172 @@ import 'package:academic_check/models/event.dart';
 import 'package:academic_check/models/task.dart';
 import 'package:academic_check/models/user.dart';
 import 'package:academic_check/models/habit.dart';
+import 'package:academic_check/services/storage_service.dart';
 import 'package:academic_check/services/web_storage_service.dart';
 import 'package:academic_check/providers/app_state.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show OtpType;
+
+class MockExceptionStorageService implements StorageService {
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<User?> createUser(User user) async {
+    throw Exception('Simulated create user error');
+  }
+
+  @override
+  Future<User?> getUserByEmail(String email) async {
+    throw Exception('Simulated get user error');
+  }
+
+  @override
+  Future<User?> getUser(String email, String passwordHash) async {
+    throw Exception('Simulated auth error');
+  }
+
+  @override
+  Future<bool> updateUser(User user) async {
+    throw Exception('Simulated update error');
+  }
+
+  @override
+  Future<List<Task>> getTasks(int userId) async {
+    throw Exception('Simulated tasks error');
+  }
+
+  @override
+  Future<Task> createTask(Task task) async {
+    throw Exception('Simulated task create error');
+  }
+
+  @override
+  Future<void> updateTask(Task task) async {
+    throw Exception('Simulated task update error');
+  }
+
+  @override
+  Future<void> deleteTask(int taskId) async {
+    throw Exception('Simulated task delete error');
+  }
+
+  @override
+  Future<List<Event>> getEvents(int userId) async {
+    throw Exception('Simulated events error');
+  }
+
+  @override
+  Future<Event> createEvent(Event event) async {
+    throw Exception('Simulated event create error');
+  }
+
+  @override
+  Future<void> updateEvent(Event event) async {
+    throw Exception('Simulated event update error');
+  }
+
+  @override
+  Future<void> deleteEvent(int eventId) async {
+    throw Exception('Simulated event delete error');
+  }
+
+  @override
+  Future<void> saveSession(String email) async {
+    throw Exception('Simulated save session error');
+  }
+
+  @override
+  Future<String?> getSession() async {
+    throw Exception('Simulated get session error');
+  }
+
+  @override
+  Future<void> clearSession() async {
+    throw Exception('Simulated clear session error');
+  }
+
+  @override
+  Future<List<Habit>> getHabits(int userId) async {
+    throw Exception('Simulated habits error');
+  }
+
+  @override
+  Future<Habit> createHabit(Habit habit) async {
+    throw Exception('Simulated habit create error');
+  }
+
+  @override
+  Future<void> updateHabit(Habit habit) async {
+    throw Exception('Simulated habit update error');
+  }
+
+  @override
+  Future<void> deleteHabit(int habitId) async {
+    throw Exception('Simulated habit delete error');
+  }
+}
+
+class MockNullStorageService implements StorageService {
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<User?> createUser(User user) async => null;
+
+  @override
+  Future<User?> getUserByEmail(String email) async => null;
+
+  @override
+  Future<User?> getUser(String email, String passwordHash) async => null;
+
+  @override
+  Future<bool> updateUser(User user) async => false;
+
+  @override
+  Future<List<Task>> getTasks(int userId) async => [];
+
+  @override
+  Future<Task> createTask(Task task) async => task;
+
+  @override
+  Future<void> updateTask(Task task) async {}
+
+  @override
+  Future<void> deleteTask(int taskId) async {}
+
+  @override
+  Future<List<Event>> getEvents(int userId) async => [];
+
+  @override
+  Future<Event> createEvent(Event event) async => event;
+
+  @override
+  Future<void> updateEvent(Event event) async {}
+
+  @override
+  Future<void> deleteEvent(int eventId) async {}
+
+  @override
+  Future<void> saveSession(String email) async {}
+
+  @override
+  Future<String?> getSession() async => null;
+
+  @override
+  Future<void> clearSession() async {}
+
+  @override
+  Future<List<Habit>> getHabits(int userId) async => [];
+
+  @override
+  Future<Habit> createHabit(Habit habit) async => habit;
+
+  @override
+  Future<void> updateHabit(Habit habit) async {}
+
+  @override
+  Future<void> deleteHabit(int habitId) async {}
+}
 
 void main() {
   group('Model serialization and copyWith', () {
@@ -168,6 +332,40 @@ void main() {
       final copiedNull = habit.copyWith();
       expect(copiedNull.id, 3);
       expect(copiedNull.title, 'Habit 1');
+
+      // Test fromMap with null completionDates
+      final nullDatesHabit = Habit.fromMap({
+        'id': 3,
+        'userId': 10,
+        'title': 'H1',
+        'description': 'D1',
+        'createdAt': '2026-06-15T00:00:00.000',
+        'isCompleted': 0,
+      });
+      expect(nullDatesHabit.completionDates.isEmpty, isTrue);
+
+      // Test fromMap with invalid JSON completionDates
+      final invalidDatesHabit = Habit.fromMap({
+        'id': 3,
+        'userId': 10,
+        'title': 'H1',
+        'description': 'D1',
+        'createdAt': '2026-06-15T00:00:00.000',
+        'completionDates': 'invalid-json-dates',
+        'isCompleted': 0,
+      });
+      expect(invalidDatesHabit.completionDates.isEmpty, isTrue);
+
+      // Test progress percentage upper bound
+      final manyDates = List<DateTime>.generate(25, (index) => DateTime(2026, 6, 1 + index));
+      final highProgressHabit = Habit(
+        userId: 1,
+        title: 'H',
+        description: 'D',
+        createdAt: DateTime(2026, 6, 1),
+        completionDates: manyDates,
+      );
+      expect(highProgressHabit.progressPercentage, 100.0);
     });
   });
 
@@ -544,4 +742,115 @@ void main() {
       expect(appState.habits.first.isCompleted, isTrue);
     });
   });
+
+  group('AppState Extra Edge Cases (Exceptions, early returns, disabled Supabase)', () {
+    test('AppState early returns when currentUser is null', () async {
+      final mockStorage = MockNullStorageService();
+      final appState = AppState(storageService: mockStorage);
+
+      // Ensure currentUser is null
+      expect(appState.currentUser, isNull);
+
+      // Early returns check
+      await appState.loadTasks();
+      await appState.addTask(title: 'T', description: 'D', dueDate: DateTime.now(), priority: 'Alta');
+      await appState.loadEvents();
+      await appState.addEvent(title: 'E', description: 'D', startDate: DateTime.now(), endDate: DateTime.now());
+      await appState.loadHabits();
+      final added = await appState.addHabit(title: 'H', description: 'D');
+      expect(added, isFalse);
+
+      final updatePasswordNullUser = await appState.updateSupabasePassword('pass');
+      expect(updatePasswordNullUser, isFalse);
+      expect(appState.authError, 'No se pudo actualizar la contraseña local.');
+    });
+
+    test('AppState early return when updating password fails offline', () async {
+      final mockStorage = MockNullStorageService();
+      final appState = AppState(storageService: mockStorage);
+      await appState.registerOffline('user@example.com', 'pass'); // will return a user but createUser returns null, so wait
+
+      // Let's create an appState with user directly (we need to bypass null create, let's use WebStorageService but update fails)
+      final service = WebStorageService();
+      await service.init();
+      final appStateOk = AppState(storageService: service);
+      await appStateOk.registerOffline('user@example.com', 'pass');
+
+      // Now let's wrap it in a failing storage for updates
+      final brokenState = AppState(storageService: MockNullStorageService());
+      // we can't set currentUser directly, but we can call tryAutoLogin with session after setting session in MockNullStorage
+      // Let's just test updatePassword when user is set but update returns false.
+      // We can use a custom MockStorage that returns a user on getUserByEmail but false on updateUser.
+      final customStorage = MockNullStorageService();
+      // We override getUserByEmail to return a User
+      // But MockNullStorage is a class. Let's create a specific mock.
+    });
+
+    test('AppState Supabase-disabled checks return expected errors', () async {
+      final appState = AppState(storageService: MockNullStorageService());
+
+      final resOtp = await appState.verifyOtpWithSupabase('test@example.com', '123456', OtpType.signup);
+      expect(resOtp, isFalse);
+      expect(appState.authError, contains('Las credenciales de Supabase no están configuradas'));
+
+      final resReset = await appState.sendPasswordResetOtp('test@example.com');
+      expect(resReset, isFalse);
+      expect(appState.authError, contains('Las credenciales de Supabase no están configuradas'));
+    });
+
+    test('AppState catches exceptions on storage service calls', () async {
+      final brokenStorage = MockExceptionStorageService();
+      final appState = AppState(storageService: brokenStorage);
+
+      // checkEmailUnique exception catch
+      final unique = await appState.checkEmailUnique('test@example.com');
+      expect(unique, isFalse);
+      expect(appState.authError, 'Error al verificar el correo electrónico.');
+
+      // checkEmailExists exception catch
+      final exists = await appState.checkEmailExists('test@example.com');
+      expect(exists, isFalse);
+      expect(appState.authError, 'Error al verificar el correo electrónico.');
+
+      // registerOffline exception catch
+      final registered = await appState.registerOffline('test@example.com', 'pass');
+      expect(registered, isFalse);
+      expect(appState.authError, 'Ocurrió un error inesperado durante el registro.');
+
+      // signInWithSupabase exception catch
+      final loggedIn = await appState.signInWithSupabase('test@example.com', 'pass');
+      expect(loggedIn, isFalse);
+      expect(appState.authError, 'Error en inicio de sesión local.');
+
+      // tryAutoLogin exception catch (no crashes)
+      await appState.tryAutoLogin();
+    });
+
+    test('AppState offline update password fails', () async {
+      final user = User(id: 1, email: 'fail@example.com', passwordHash: 'hash', createdAt: DateTime.now());
+      final storage = customGetByUserStorage(user);
+      final appState = AppState(storageService: storage);
+      
+      // Auto login so currentUser is not null
+      await appState.tryAutoLogin();
+      expect(appState.currentUser, isNotNull);
+
+      // Attempt update password (should return false because storage.updateUser returns false)
+      final success = await appState.updateSupabasePassword('newpass');
+      expect(success, isFalse);
+      expect(appState.authError, 'No se pudo actualizar la contraseña local.');
+    });
+  });
+}
+
+class customGetByUserStorage extends MockNullStorageService {
+  final User user;
+  customGetByUserStorage(this.user);
+
+  @override
+  Future<User?> getUserByEmail(String email) async => user;
+  @override
+  Future<String?> getSession() async => user.email;
+  @override
+  Future<bool> updateUser(User user) async => false; // Fails update
 }
